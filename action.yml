@@ -10,7 +10,6 @@ inputs:
   token:
     description: 'Token to access package registry.'
     required: true
-    default: ${{ github.token }}
   registry:
     description: 'Registry url'
     required: true
