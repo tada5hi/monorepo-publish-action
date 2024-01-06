@@ -1,6 +1,6 @@
 {
   "name": "monorepo-publish-action",
-  "version": "0.0.0",
+  "version": "1.0.0",
   "description": "A package to publish packages in a monorepo.",
   "main": "dist/index.js",
   "scripts": {
