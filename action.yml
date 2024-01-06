@@ -1,0 +1,23 @@
+name: 'monorepo-publish-action'
+description: 'A github action to publish packages in a monorepo.'
+author: 'tada5hi'
+
+branding:
+  icon: 'heart'
+  color: 'red'
+
+inputs:
+  token:
+    description: 'Token to access package registry.'
+    required: true
+    default: ${{ github.token }}
+  registry:
+    description: 'Registry url'
+    required: true
+    default: 'https://registry.npmjs.org/'
+  cwd:
+    description: 'Directory of root package'
+
+runs:
+  using: node20
+  main: dist/index.js

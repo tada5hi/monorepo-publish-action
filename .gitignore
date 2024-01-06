@@ -1,0 +1,11 @@
+.DS_Store
+doc
+node_modules
+.vscode
+.nyc_output
+coverage
+*.log
+npm-debug.log*
+.idea
+reports
+dist
