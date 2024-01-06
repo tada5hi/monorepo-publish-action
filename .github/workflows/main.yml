@@ -110,7 +110,7 @@ jobs:
 
     release:
         name: Release
-        needs: [ docker ]
+        needs: [ dist, lint ]
         runs-on: ubuntu-latest
         steps:
             -   name: Checkout
