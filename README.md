@@ -1,6 +1,7 @@
 # monorepo-publish-action ✨
 
 A GitHub action to publish packages of a monorepo.
+The action is based on the library [workspaces-publish](https://github.com/tada5hi/workspaces-publish).
 
 ## Action inputs
 
