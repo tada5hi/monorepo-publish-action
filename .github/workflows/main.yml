@@ -1,0 +1,156 @@
+# This workflow will do a clean install of node dependencies, cache/restore them, build the source code and run tests across different versions of node
+# For more information see: https://help.github.com/actions/language-and-framework-guides/using-nodejs-with-github-actions
+
+name: CI
+
+on:
+    push:
+        branches: [master, next, beta, alpha, develop]
+    pull_request:
+        branches: [master, next, beta, alpha, develop]
+
+permissions:
+    packages: write
+    contents: write
+    issues: write
+    pull-requests: write
+
+env:
+    PRIMARY_NODE_VERSION: 18
+
+jobs:
+    install:
+        name: Checkout and Install
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
+            - name: Install
+              uses: ./.github/actions/install
+              with:
+                  node-version: ${{ env.PRIMARY_NODE_VERSION }}
+    build:
+        name: Build Package
+        needs: [install]
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
+            - name: Install
+              uses: ./.github/actions/install
+              with:
+                  node-version: ${{ env.PRIMARY_NODE_VERSION }}
+            - name: Build
+              uses: ./.github/actions/build
+
+    dist:
+        name: Create pull request for dist
+        needs: [build]
+        runs-on: ubuntu-latest
+        steps:
+            -   name: commit
+                run: |-
+                    set -e
+                    # get current commit hash
+                    CURRENT_HASH=$(git rev-parse HEAD)
+                    # get last commit hash of last build dist
+                    LAST_BUILD_HASH=$(git log --author=google-github-actions-bot -1 --pretty=format:"%H")
+                    DIFF=""
+                    # build and commit dist if diff
+                    git config --global user.name "actions-bot"
+                    git config user.email 'github-actions-bot@google.com'
+                    git add dist/
+                    git diff-index --quiet HEAD || git commit -m "chore: build dist ${ACTION_NAME}"
+                    # if last commit hash of last build dist was found, get logs of commits in btw for PR body
+                    if [ -z "$LAST_BUILD_HASH" ]
+                    then
+                         echo "Unable to find last commit by bot, skipping diff gen"
+                    else
+                         DIFF=$(git log ${LAST_BUILD_HASH}...${CURRENT_HASH} --oneline)
+                         echo $DIFF
+                    fi
+                    # set env vars
+                    echo "CURRENT_HASH=${CURRENT_HASH}" >> $GITHUB_ENV
+                    echo "LAST_BUILD_HASH=${LAST_BUILD_HASH}" >> $GITHUB_ENV
+                    echo 'DIFF<<EOF' >> $GITHUB_ENV
+                    echo "${DIFF}" >> $GITHUB_ENV
+                    echo 'EOF' >> $GITHUB_ENV
+            -   name: Create PR with dist
+                uses: peter-evans/create-pull-request@v5
+                with:
+                    commit-message: Build dist
+                    author: "actions-bot <github-actions-bot@google.com>"
+                    title: "chore: build dist"
+                    body: |
+                        Build dist PR
+                        ${{env.DIFF}}
+                    labels: automated pr
+                    branch: create-pull-request/build-dist
+                    delete-branch: true
+
+    lint:
+        name: lint Package
+        needs: [build]
+        runs-on: ubuntu-latest
+        steps:
+            -   name: Checkout
+                uses: actions/checkout@v4
+
+            -   name: Install
+                uses: ./.github/actions/install
+                with:
+                    node-version: ${{ env.PRIMARY_NODE_VERSION }}
+
+            -   name: Build
+                uses: ./.github/actions/build
+
+            -   name: Lint
+                run: |
+                    npm run lint
+
+    release:
+        name: Release
+        needs: [ docker ]
+        runs-on: ubuntu-latest
+        steps:
+            -   name: Checkout
+                uses: actions/checkout@v4
+
+            -   name: Install
+                uses: ./.github/actions/install
+                with:
+                    node-version: ${{ env.PRIMARY_NODE_VERSION }}
+
+            -   name: Build
+                uses: ./.github/actions/build
+
+            -   name: Compare Directories
+                id: diff
+                run: |
+                    if [ "$(git diff --ignore-space-at-eol --text dist/ | wc -l)" -gt "0" ]; then
+                      echo "Detected uncommitted changes after build. See status below:"
+                      git diff --ignore-space-at-eol --text dist/
+                      exit 1
+                    fi
+
+            -   uses: google-github-actions/release-please-action@v4
+                id: release
+                with:
+                    release-type: node
+
+            -   uses: actions/checkout@v4
+
+            -   name: tag major and minor versions
+                if: ${{ steps.release.outputs.release_created }}
+                run: |
+                    git config user.name github-actions[bot]
+                    git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+                    git remote add gh-token "https://${{ secrets.GITHUB_TOKEN }}@github.com/google-github-actions/release-please-action.git"
+                    git tag -d v${{ steps.release.outputs.major }} || true
+                    git tag -d v${{ steps.release.outputs.major }}.${{ steps.release.outputs.minor }} || true
+                    git push origin :v${{ steps.release.outputs.major }} || true
+                    git push origin :v${{ steps.release.outputs.major }}.${{ steps.release.outputs.minor }} || true
+                    git tag -a v${{ steps.release.outputs.major }} -m "Release v${{ steps.release.outputs.major }}"
+                    git tag -a v${{ steps.release.outputs.major }}.${{ steps.release.outputs.minor }} -m "Release v${{ steps.release.outputs.major }}.${{ steps.release.outputs.minor }}"
+                    git push origin v${{ steps.release.outputs.major }}
+                    git push origin v${{ steps.release.outputs.major }}.${{ steps.release.outputs.minor }}
