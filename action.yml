@@ -8,12 +8,9 @@ branding:
 
 inputs:
   token:
-    description: 'Token to access package registry.'
-    required: true
+    description: 'Token to access registry'
   registry:
     description: 'Registry url'
-    required: true
-    default: 'https://registry.npmjs.org/'
   cwd:
     description: 'Directory of root package'
 
