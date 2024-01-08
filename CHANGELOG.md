@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.0](https://github.com/tada5hi/monorepo-publish-action/compare/v1.0.0...v1.1.0) (2024-01-08)
+
+
+### Features
+
+* don't require and set default values for action input ([e489492](https://github.com/tada5hi/monorepo-publish-action/commit/e4894925a5f1484744b181e423fe9a1529683437))
+
 ## 1.0.0 (2024-01-06)
 
 
